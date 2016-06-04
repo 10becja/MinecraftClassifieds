@@ -198,9 +198,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		List<Request> requests = playerMap.get(req.requestingPlayer);
 		if(requests != null){
 			int idx = requests.indexOf(req);
-			System.out.println(idx);
 			if(idx > -1){
-				System.out.println(req.isPending);
 				req.isPending = true;
 				requests.set(idx, req);
 				playerMap.put(req.requestingPlayer, requests);
