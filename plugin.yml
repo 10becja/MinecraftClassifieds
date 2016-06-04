@@ -3,20 +3,23 @@ main: me.becja10.MCClassifieds.MCClassifieds
 author: 10becja
 version: 1.0
 description: An economy plugin that allows players to place requests for items
-depend: [Vault]
+depend: [Vault, Essentials]
 commands:
   mccreload:
     description: reloads the plugin and all configs
     usage: /<command>
   mccrequest:
-    description: Allows for setting requests ingame. Hold the item (and amount) that you wish to make a request of.
-    usage: /<command> <amount> <base price> <1-5> (optional custom display name)
-  mccget:
-    description: Shows what requests are available and which you've already completed
+    description: Allows for setting requests ingame. The command will start a chat wizard to help create the request.
     usage: /<command>
+  mcclist:
+    description: Shows all active requests. If 'mine' or another player's name is provided, shows all requests related to them.
+    usage: /<command> (mine|player) [page number]
   mccfulfill:
-    description: Lists all requests according to the criteria
-    usage: /<command> <filter> <page>
-  mcccancel:
-    description: Gets all details for a request id
+    description: Completes a request. Must hold at least one of the request items in your hand.
     usage: /<command> <id>
+  mccget:
+    description: Once a request is fulfilled, this will give you the items. Use /mcclist mine to get the right id.
+    usage: /<command> <id>
+  mcccancel:
+    description: Cancels a request
+    usage: /<command> (player) <id>

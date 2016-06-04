@@ -1,11 +1,22 @@
 package me.becja10.MCClassifieds.Commands;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import net.milkbowl.vault.economy.EconomyResponse;
+
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import me.becja10.MCClassifieds.MCClassifieds;
 import me.becja10.MCClassifieds.Utils.Messages;
+import me.becja10.MCClassifieds.Utils.Request;
 import me.becja10.MCClassifieds.Utils.WizardPlayer;
 
 public class RequestCommandHandler {
@@ -17,7 +28,7 @@ public class RequestCommandHandler {
 			return true;
 		}
 		
-		if(!sender.hasPermission("mcc.makerequest"))
+		if(!sender.hasPermission("mcc.request"))
 		{
 			sender.sendMessage(Messages.noPermission());
 			return true;
@@ -25,35 +36,314 @@ public class RequestCommandHandler {
 		
 		Player player = (Player) sender;
 		
-		WizardPlayer wp = new WizardPlayer(player.getUniqueId());
-		
-		if(MCClassifieds.wizardPlayers.containsKey(wp.id))
+		if(MCClassifieds.wizardPlayers.containsKey(player.getUniqueId()))
 		{
 			return true;
 		}
 		
+		if(MCClassifieds.playerAtRequestLimit(player.getUniqueId())){
+			sender.sendMessage(Messages.prefix + ChatColor.RED + "You can not make any more requests until your other requests have been completed.");
+			return true;
+		}
+		
+		WizardPlayer wp = new WizardPlayer(player.getUniqueId());		
+		
 		MCClassifieds.wizardPlayers.put(wp.id, wp);
 		
-		sender.sendMessage(ChatColor.GREEN + "Welcome to the Minecraft Classifieds tutorial! Here you can make requests for things you want.");
+		sender.sendMessage(wp.getPromptForStep());
 		sender.sendMessage(Messages.breakLine());
-		sender.sendMessage(Messages.requestItem());
 		
 		return true;
 	}
 
-	public static boolean fulfilRequest(CommandSender sender, String[] args) {
+	public static boolean fulfillRequest(CommandSender sender, String[] args) {
+		if(!(sender instanceof Player))
+		{
+			sender.sendMessage(Messages.playersOnly());
+			return true;
+		}
+		
+		if(!sender.hasPermission("mcc.fulfill"))
+		{
+			sender.sendMessage(Messages.noPermission());
+			return true;
+		}
+		
+		if(args.length != 1)
+			return false;
+		
+		int id;
+		try{
+			id = Integer.parseInt(args[0]);
+		}
+		catch(NumberFormatException ex){
+			return false;
+		}
+		
+		if(id > MCClassifieds.activeRequests.size() || id < 1)
+		{
+			sender.sendMessage(ChatColor.RED + "Invalid Request Id.");
+			return true;
+		}
+		
+		Player player = (Player) sender;
+		Request req = MCClassifieds.activeRequests.get(id - 1);
+		ItemStack inHand = player.getInventory().getItemInMainHand();
+		
+		ItemStack baseReq = getBaseItem(req.item);
+		ItemStack baseHand = getBaseItem(inHand);
+		if(baseReq.equals(baseHand)){
+			if(player.getInventory().containsAtLeast(inHand, req.amount)){
+				for(Enchantment ench : req.item.getEnchantments().keySet()){
+					if((!inHand.containsEnchantment(ench)) ||
+						inHand.getEnchantmentLevel(ench) != req.item.getEnchantmentLevel(ench))
+					{
+						sender.sendMessage(ChatColor.RED + "This item does not have the required enchantments!");
+						return true;
+					}
+				}
+				
+				//at this point, we know that they have the proper item(s), so do the transaction
+				EconomyResponse r = MCClassifieds.econ.depositPlayer(player, req.price);
+				if(r.transactionSuccess())
+				{
+					ItemStack toRemove = new ItemStack(req.item);
+					toRemove.setAmount(req.amount);
+					player.getInventory().removeItem(toRemove);
+					player.updateInventory();
+					player.sendMessage(ChatColor.GREEN + "You have been paid " + ChatColor.GOLD + "$" + req.price);
+					MCClassifieds.logger.info(player.getName() + "was credited with " + req.amount + " for selling " + 
+																	req.amount + " " + req.item + " to " +
+																	Bukkit.getPlayer(req.requestingPlayer).getName());
+					MCClassifieds.fulfillRequest(req);
+				}
+				else{
+					sender.sendMessage(Messages.incompleteTransaction());
+				}
+			}
+			else{
+				sender.sendMessage(ChatColor.RED + "You don't have enough items for this request.");
+			}
+		}
+		else{
+			sender.sendMessage(ChatColor.RED + "You are holding the wrong item for this request.");
+		}		
 		
 		return true;
 	}
 	
 	public static boolean viewRequests(CommandSender sender, String[] args){
+		if(!sender.hasPermission("mcc.list"))
+		{
+			sender.sendMessage(Messages.noPermission());
+			return true;
+		}
+		
+		if(args.length > 2)
+			return false;
+		
+		int pageParam = (args.length == 2) ? 1 : 0; 
+		
+		int page = 1;
+		boolean pageSent = false;
+		try{
+			if(args.length > 0){
+				page = Integer.parseInt(args[pageParam]);
+				pageSent = true;
+			}
+		}catch(NumberFormatException e){
+			pageSent = false;
+		}
+		
+		if(page <= 0) page = 1;
+		
+		List<Request> listToUse = MCClassifieds.activeRequests;
+		
+		boolean forPerson = false;
+		
+		//if they sent a parameter, and the first param isn't the page, then it was a name
+		if(!pageSent && args.length > 0){
+			String name = args[0];
+			Player player = null;
+			if(name.equalsIgnoreCase("mine") && sender instanceof Player){
+				player = (Player) sender;
+			}
+			else{
+				if(!sender.hasPermission("mcc.list.other"))
+				{
+					sender.sendMessage(Messages.noPermission());
+					return true;
+				}
+				player = Bukkit.getPlayer(name);
+			}
+			if(player != null){
+				listToUse = MCClassifieds.playerMap.get(player.getUniqueId());
+				if(listToUse == null){
+					sender.sendMessage(Messages.playerHasNoRequests(player.getName()));
+					return true;
+				}
+				forPerson = true;
+				sender.sendMessage(ChatColor.BLUE + "Displaying requests for " + player.getName() + ":");
+				sender.sendMessage(ChatColor.WHITE + "White" + ChatColor.BLUE+ " ids have not been completed," + ChatColor.GREEN + 
+						" green" + ChatColor.BLUE + " ids are pending collection");
+			}
+			else{
+				sender.sendMessage(Messages.playerNotFound());
+				return true;
+			}
+		}
+		
+		if(!forPerson)
+			sender.sendMessage(ChatColor.BLUE + "Displaying active requests:");
+		
+		displayListToSender(sender, listToUse, page);		
 		
 		return true;
 	}
-	
+
 	public static boolean cancelRequest(CommandSender sender, String[] args){
+		if(!sender.hasPermission("mcc.cancel"))
+		{
+			sender.sendMessage(Messages.noPermission());
+			return true;
+		}
 		
+		if(args.length < 1)
+			return false;
+		
+		int idParam = 0;
+		boolean nameSent = false;
+		
+		if(args.length == 2){
+			idParam = 1;
+			nameSent = true;
+		}
+		
+		if(!nameSent && !(sender instanceof Player)){
+			sender.sendMessage(Messages.playersOnly());
+			return true;
+		}
+		
+		if(nameSent && !sender.hasPermission("mcc.cancel.other"))
+		{
+			sender.sendMessage(Messages.noPermission());
+			return true;
+		}
+		
+		int id = 0;
+		
+		try{
+			if(args.length > 0){
+				id = Integer.parseInt(args[idParam]) - 1;
+			}
+		}catch(NumberFormatException e){
+			return false;
+		}
+		
+		if(id < 0)
+			return false;
+		
+		UUID pid = null;
+		
+		if(nameSent){
+			String name = args[0];
+			Player p = Bukkit.getPlayer(name);
+			if(p != null){
+				pid = p.getUniqueId();
+			}
+			else{
+				sender.sendMessage(Messages.playerNotFound());
+				return true;
+			}
+		}
+		else{
+			pid = ((Player) sender).getUniqueId();
+		}
+		
+		MCClassifieds.cancelRequest(sender, pid, id);		
 		return true;
+	}
+	
+	public static boolean getRequest(CommandSender sender, String[] args){
+		if(!sender.hasPermission("mcc.get"))
+		{
+			sender.sendMessage(Messages.noPermission());
+			return true;
+		}
+		
+		if(!(sender instanceof Player)){
+			sender.sendMessage(Messages.playersOnly());
+			return true;
+		}
+		
+		if(args.length != 1)
+			return false;
+		
+		int id = 0;
+		
+		try{
+			if(args.length > 0){
+				id = Integer.parseInt(args[0]) - 1;
+			}
+		}catch(NumberFormatException e){
+			return false;
+		}
+		
+		if(id < 0)
+			return false;
+				
+		MCClassifieds.getRequest((Player) sender, id);		
+		return true;
+	}
+	
+	private static void displayListToSender(CommandSender sender, List<Request> listToUse, int page) {
+		int startIdx, stopIdx, maxPage;
+		
+		Collections.sort(listToUse);
+		
+		maxPage = (listToUse.size() / 10) + 1;
+		
+		page = Math.min(maxPage, page);
+		
+		startIdx = (page - 1) * 10;
+		stopIdx = Math.min(listToUse.size(), startIdx + 10);
+		
+		sender.sendMessage(ChatColor.GRAY + "Page " + page + " of " + maxPage);
+		sender.sendMessage(Messages.breakLine());
+		for(int i = startIdx; i < stopIdx; i++){
+			Request req = listToUse.get(i);
+			String toSend = req.isPending ? ChatColor.GREEN + "" : ChatColor.WHITE + "";
+			toSend += (i + 1) + ". ";
+			toSend += ChatColor.YELLOW + "" + req.amount + " ";
+			toSend += ChatColor.AQUA + getItemDisplayName(req.item) + " ";
+			toSend += ChatColor.BLUE + "for " + ChatColor.GOLD + "$" + req.price + " ";
+			toSend += ChatColor.BLUE + "- " + Bukkit.getOfflinePlayer(req.requestingPlayer).getName();
+			
+			sender.sendMessage(toSend);
+		}	
+	}
+	
+	private static String getItemDisplayName(ItemStack item){
+		String display = MCClassifieds.itemDb.name(item);
+		Map<Enchantment, Integer> map = item.getEnchantments();
+		if(!map.isEmpty()){
+			String prefix = "";
+			for(Enchantment en : map.keySet()){
+				prefix += en.getName() + " " + map.get(en) + " "; 
+			}
+			display = prefix + display;
+		}
+		
+		return display;
+	}
+	
+	private static ItemStack getBaseItem(ItemStack original){
+		ItemStack base = new ItemStack(original);
+		base.setAmount(1);
+		for(Enchantment enc : original.getEnchantments().keySet()){
+			base.removeEnchantment(enc);
+		}		
+		return base;
 	}
 
 }
