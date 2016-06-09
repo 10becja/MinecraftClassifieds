@@ -313,6 +313,8 @@ public class RequestCommandHandler {
 	
 	private static String getItemDisplayName(ItemStack item){
 		String display = MCClassifieds.itemDb.name(item);
+		if(display == null)
+			display = item.getType().name().toLowerCase();
 		Map<Enchantment, Integer> map = item.getEnchantments();
 		if(!map.isEmpty()){
 			String prefix = "";

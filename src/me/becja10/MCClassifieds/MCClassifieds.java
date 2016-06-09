@@ -257,7 +257,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		case "WATER_WORKER":
 			return "AquaAffinity";
 		}
-		return "Unknown";
+		return enc.getName();
 	}
 	
 	public static void newRequest(Request req){
