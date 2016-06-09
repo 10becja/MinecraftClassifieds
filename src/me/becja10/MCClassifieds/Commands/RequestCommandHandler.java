@@ -13,6 +13,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.Repairable;
 
 import me.becja10.MCClassifieds.MCClassifieds;
 import me.becja10.MCClassifieds.Utils.Messages;
@@ -88,21 +91,9 @@ public class RequestCommandHandler {
 		
 		Player player = (Player) sender;
 		Request req = MCClassifieds.activeRequests.get(id - 1);
-		ItemStack inHand = player.getInventory().getItemInMainHand();
+		ItemStack original = new ItemStack(req.item); //make a copy in case transaction fails and the item was updated
 		
-		ItemStack baseReq = getBaseItem(req.item);
-		ItemStack baseHand = getBaseItem(inHand);
-		if(baseReq.equals(baseHand)){
-			if(player.getInventory().containsAtLeast(inHand, req.amount)){
-				for(Enchantment ench : req.item.getEnchantments().keySet()){
-					if((!inHand.containsEnchantment(ench)) ||
-						inHand.getEnchantmentLevel(ench) != req.item.getEnchantmentLevel(ench))
-					{
-						sender.sendMessage(ChatColor.RED + "This item does not have the required enchantments!");
-						return true;
-					}
-				}
-				
+		if(doesInvContainRequest(player.getInventory(), req)){		
 				//at this point, we know that they have the proper item(s), so do the transaction
 				EconomyResponse r = MCClassifieds.econ.depositPlayer(player, req.price);
 				if(r.transactionSuccess())
@@ -118,16 +109,13 @@ public class RequestCommandHandler {
 					MCClassifieds.fulfillRequest(req);
 				}
 				else{
+					req.item = original;
 					sender.sendMessage(Messages.incompleteTransaction());
 				}
-			}
-			else{
-				sender.sendMessage(ChatColor.RED + "You don't have enough items for this request.");
-			}
 		}
 		else{
-			sender.sendMessage(ChatColor.RED + "You are holding the wrong item for this request.");
-		}		
+			sender.sendMessage(ChatColor.RED + "You do not have the required item(s) for this request.");
+		}	
 		
 		return true;
 	}
@@ -329,21 +317,43 @@ public class RequestCommandHandler {
 		if(!map.isEmpty()){
 			String prefix = "";
 			for(Enchantment en : map.keySet()){
-				prefix += en.getName() + " " + map.get(en) + " "; 
+				prefix += MCClassifieds.getEnchantmentCommonName(en) + " " + map.get(en) + " "; 
 			}
 			display = prefix + display;
 		}
 		
 		return display;
 	}
-	
-	private static ItemStack getBaseItem(ItemStack original){
-		ItemStack base = new ItemStack(original);
-		base.setAmount(1);
-		for(Enchantment enc : original.getEnchantments().keySet()){
-			base.removeEnchantment(enc);
-		}		
-		return base;
+			
+	private static boolean doesInvContainRequest(PlayerInventory inv, Request req){
+		int amountInInventory = 0;
+		for(ItemStack item : inv.getStorageContents()){
+			if(item == null)
+				continue;
+			ItemStack dummy = new ItemStack(item);
+			
+			//clear out any repair penalty to check if everything else is the same.
+			if(dummy.hasItemMeta() && dummy.getItemMeta() instanceof Repairable)
+			{
+				Repairable rmeta = (Repairable) dummy.getItemMeta();
+				rmeta.setRepairCost(0);
+				dummy.setItemMeta((ItemMeta) rmeta);
+			}
+			
+			if(dummy.isSimilar(req.item)){
+				amountInInventory += dummy.getAmount();
+			}
+			
+			if(amountInInventory >= req.amount){
+				//set the requested item equal to this item to carry over repair costs. Everything else should remain the same.
+				//however, this guarantees that the item taken is the item given.
+				req.item = new ItemStack(item); 
+				req.item.setAmount(1);
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 }

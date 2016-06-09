@@ -90,6 +90,7 @@ public class RequestManager {
 	public static void setPending(Request req){
 		String id = req.id.toString();
 		if(config.contains(id)){
+			config.set(id+".item", req.item);//update the item in case it's changed
 			config.set(id+".isPending", true);
 			saveRequests();
 		}

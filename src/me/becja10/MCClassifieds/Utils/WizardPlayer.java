@@ -39,7 +39,7 @@ public class WizardPlayer {
 	public void goToNextStep(){
 		if(wizStep == 1)
 		{
-			if(item.getMaxStackSize() == 1){
+			if(!item.getEnchantments().isEmpty()){ //if the item has an enchantment, only allow 1
 				amount = 1;
 				wizStep = 4;
 			}
@@ -56,9 +56,15 @@ public class WizardPlayer {
 		case 0:
 			return ChatColor.GREEN + "Please enter the item you would like to request (eg. \"DiamondSword\" or \"264\").";
 		case 1:
-			return ChatColor.GREEN + "Please pick an enchantment and level (eg \"Sharpness 3\") from this list. "
-					+ "Once you've added all the "
-					+ "enchantments you want, type \"Next\" to continue";
+			
+			String prompt = ChatColor.GREEN + "Please pick an enchantment and level (eg \"Sharpness 3\") from this list: \n";
+			
+			for(Enchantment en : possbileEnchantments){
+				prompt += ChatColor.AQUA + MCClassifieds.getEnchantmentCommonName(en) + " " + en.getStartLevel() + "-" + en.getMaxLevel() + "\n";
+			}
+			prompt += "\n";
+			prompt += ChatColor.GREEN + "Once you've added all the enchantments you want, type \"Next\" to continue";
+			return prompt;
 		case 2:
 			return ChatColor.GREEN + "Please select a potion effect";
 		case 3:
@@ -80,7 +86,7 @@ public class WizardPlayer {
 		if(!map.isEmpty()){
 			ret += ChatColor.GREEN + "Enchanted with:\n";
 			for(Enchantment en : map.keySet()){
-				ret += ChatColor.GOLD + "     " + en.getName() + " " + map.get(en) + "\n";
+				ret += ChatColor.GOLD + "     " + MCClassifieds.getEnchantmentCommonName(en) + " " + map.get(en) + "\n";
 			}
 		}
 		

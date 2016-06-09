@@ -73,7 +73,7 @@ public class ChatEventHandler implements Listener {
 			case 5: //confirm
 				if(input[0].equalsIgnoreCase("confirm"))
 				{
-					if(wp.price < MCClassifieds.econ.getBalance(player))
+					if(wp.price <= MCClassifieds.econ.getBalance(player))
 					{
 						EconomyResponse r = MCClassifieds.econ.withdrawPlayer(player, wp.price);
 						if(r.transactionSuccess())
@@ -187,10 +187,14 @@ public class ChatEventHandler implements Listener {
 			return;
 		}
 		
+		if(item == null){
+			invalidResponse(player, wp);
+			return;
+		}
+		
 		item.setAmount(1);
 		
-		if(item.getType() == Material.BEDROCK || item.getType() == Material.AIR || 
-				item.getType() == Material.WATER || item.getType() == Material.LAVA){
+		if(MCClassifieds.blacklistItems.contains(item.getType().toString())){
 			player.sendMessage(ChatColor.RED + "This item is not allowed!");
 			return;
 		}
@@ -211,8 +215,6 @@ public class ChatEventHandler implements Listener {
 		if(wp.possbileEnchantments.isEmpty()){
 			if(wp.item.getType() == Material.SPLASH_POTION || wp.item.getType() == Material.POTION)
 				wp.wizStep = 2;
-			else if(wp.item.getMaxStackSize() == 1)
-				wp.wizStep = 4;
 			else
 				wp.wizStep = 3;
 		}

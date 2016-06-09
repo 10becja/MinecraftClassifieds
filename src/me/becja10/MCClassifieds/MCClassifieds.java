@@ -21,11 +21,13 @@ import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
@@ -58,10 +60,13 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 	
 	private IEssentials ess;
 	
+	private List<String> defaultBlacklist;
+	
 	//Config Settings
 	
-	public static int requestLimit; private String requestLimitstr = "Request limit per player";
-	public static int timeLimit; private String timeLimitstr = "Number of days before request expires";
+	public static int requestLimit; private String _requestLimit = "Request limit per player";
+	public static int timeLimit; private String _timeLimit = "Number of days before request expires";
+	public static List<String> blacklistItems; private String _blacklistItems = "Items Blacklist";
 	
 		
 	private void loadConfig(){
@@ -69,12 +74,14 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		config = YamlConfiguration.loadConfiguration(new File(configPath));
 		outConfig = new YamlConfiguration();
 		
-		requestLimit = config.getInt(requestLimitstr, 5);
-		timeLimit = config.getInt(timeLimitstr, 3);
+		requestLimit = config.getInt(_requestLimit, 5);
+		timeLimit = config.getInt(_timeLimit, 3);
 		
-		
-		outConfig.set(requestLimitstr, requestLimit);
-		outConfig.set(timeLimitstr, timeLimit);
+		blacklistItems = config.contains(_blacklistItems) ? config.getStringList(_blacklistItems) : defaultBlacklist;
+				
+		outConfig.set(_requestLimit, requestLimit);
+		outConfig.set(_timeLimit, timeLimit);
+		outConfig.set(_blacklistItems, blacklistItems);
 		
 		saveConfig(outConfig, configPath);				
 	}
@@ -96,6 +103,20 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		activeRequests = new ArrayList<Request>();
 		wizardPlayers = new HashMap<UUID, WizardPlayer>();
 		playerMap = new HashMap<UUID, List<Request>>();
+		
+		defaultBlacklist = new ArrayList<String>();
+		defaultBlacklist.add(Material.BEDROCK.toString());
+		defaultBlacklist.add(Material.SOIL.toString());
+		defaultBlacklist.add(Material.AIR.toString());
+		defaultBlacklist.add(Material.BARRIER.toString());
+		defaultBlacklist.add(Material.ENDER_PORTAL_FRAME.toString());
+		defaultBlacklist.add(Material.MONSTER_EGG.toString());
+		defaultBlacklist.add(Material.LAVA.toString());
+		defaultBlacklist.add(Material.WATER.toString());
+		defaultBlacklist.add(Material.COMMAND.toString());
+		defaultBlacklist.add(Material.COMMAND_CHAIN.toString());
+		defaultBlacklist.add(Material.COMMAND_REPEATING.toString());
+		defaultBlacklist.add(Material.COMMAND_MINECART.toString());
 		
 		loadConfig();		
 		
@@ -127,11 +148,11 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 			}
 			addToPlayerMap(req);			
 		}
-		
+				
 		Collections.sort(activeRequests);
 				
 		manager.registerEvents(new ChatEventHandler(), this);
-		manager.registerEvents(new PlayerEventHandler(), this);;
+		manager.registerEvents(new PlayerEventHandler(), this);
 	}
 		
 	@Override
@@ -160,14 +181,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 			case "mccfulfill":
 				return RequestCommandHandler.fulfillRequest(sender, args);
 			case "mcclist":
-				for(Request req : activeRequests){
-					if(!req.isPending && (System.currentTimeMillis() - req.createDate) > timeLimit*86400000){
-						int idx = playerMap.get(req.requestingPlayer).indexOf(req);
-						logger.info("[MCCLassifieds] " + Bukkit.getOfflinePlayer(req.requestingPlayer).getName() + "'s "
-								+ "request expired and was automatically cancelled.");
-						cancelRequest(Bukkit.getConsoleSender(), req.requestingPlayer, idx);				
-					}
-				}
+				systemCancelExpiredRequests();
 				return RequestCommandHandler.viewRequests(sender, args);
 			case "mcccancel":
 				return RequestCommandHandler.cancelRequest(sender, args);
@@ -176,13 +190,73 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		}
 		return true;
 	}
-	
+
 	public static boolean playerAtRequestLimit(UUID id){
 		List<Request> requests = playerMap.get(id);
 		if(requests != null){
-			return requests.size() > requestLimit;
+			return requests.size() >= requestLimit;
 		}		
 		return false;
+	}
+	
+	public static String getEnchantmentCommonName(Enchantment enc){
+		switch(enc.getName()){
+		case "ARROW_DAMAGE":
+			return "Power";
+		case "ARROW_FIRE":
+			return "Flame";
+		case "ARROW_INFINITE":
+			return "Infinity";
+		case "ARROW_KNOCKBACK":
+			return "Punch";
+		case "DAMAGE_ALL":
+			return "Sharpness";
+		case "DAMAGE_ARTHROPODS":
+			return "BaneOfArthropods ";
+		case "DAMAGE_UNDEAD":
+			return "Smite";
+		case "DEPTH_STRIDER":
+			return "DepthStrider";
+		case "DIG_SPEED":
+			return "Effeciency";
+		case "DURABILITY":
+			return "Unbreaking";
+		case "FIRE_ASPECT":
+			return "FireAspect";
+		case "FROST_WALKER":
+			return "FrostWalker";
+		case "KNOCKBACK":
+			return "Knockback";
+		case "LOOT_BONUS_BLOCKS":
+			return "Fortune";
+		case "LOOT_BONUS_MOBS":
+			return "Looting";
+		case "LUCK":
+			return "LuckOfTheSea";
+		case "LURE":
+			return "Lure";
+		case "MENDING":
+			return "Mending";
+		case "OXYGEN":
+			return "Respiration";
+		case "PROTECTION_ENVIRONMENTAL":
+			return "Protection";
+		case "PROTECTION_EXPLOSIONS":
+			return "BlastProtection";
+		case "PROTECTION_FALL":
+			return "FeatherFalling";
+		case "PROTECTION_FIRE":
+			return "FireProtection";
+		case "PROTECTION_PROJECTILE":
+			return "ProjectileProtection";
+		case "SILK_TOUCH":
+			return "SilkTouch";
+		case "THORNS":
+			return "Thorns";
+		case "WATER_WORKER":
+			return "AquaAffinity";
+		}
+		return "Unknown";
 	}
 	
 	public static void newRequest(Request req){
@@ -204,6 +278,13 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 				playerMap.put(req.requestingPlayer, requests);
 			}
 		}
+	}
+		
+	public static void cancelRequest(Request req){
+		int idx = playerMap.get(req.requestingPlayer).indexOf(req);
+		logger.info("[MCCLassifieds] " + Bukkit.getOfflinePlayer(req.requestingPlayer).getName() + "'s "
+				+ "request expired and was automatically cancelled.");
+		cancelRequest(Bukkit.getConsoleSender(), req.requestingPlayer, idx);
 	}
 	
 	public static void cancelRequest(CommandSender sender, UUID pid, int idx){
@@ -306,6 +387,18 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 			requests = new ArrayList<Request>();
 		requests.add(req);
 		playerMap.put(req.requestingPlayer, requests);
+	}
+	
+	private void systemCancelExpiredRequests() {
+		List<Request> toCancel = new ArrayList<Request>();
+		for(Request req : activeRequests){
+			if(!req.isPending && (System.currentTimeMillis() - req.createDate) > timeLimit*86400000){
+				toCancel.add(req);
+			}
+		}
+		for(Request req : toCancel){
+			cancelRequest(req);				
+		}
 	}
 }
 
