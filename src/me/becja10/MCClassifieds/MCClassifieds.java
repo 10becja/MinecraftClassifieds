@@ -111,6 +111,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		defaultBlacklist.add(Material.BARRIER.toString());
 		defaultBlacklist.add(Material.ENDER_PORTAL_FRAME.toString());
 		defaultBlacklist.add(Material.MONSTER_EGG.toString());
+		defaultBlacklist.add(Material.MONSTER_EGGS.toString());
 		defaultBlacklist.add(Material.LAVA.toString());
 		defaultBlacklist.add(Material.WATER.toString());
 		defaultBlacklist.add(Material.COMMAND.toString());
@@ -167,7 +168,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args)
 	{
 		switch(cmd.getName().toLowerCase()){ 
-			case "mccreload":
+			case "mccadmin":
 				if(sender instanceof Player && !sender.hasPermission(""))
 					sender.sendMessage(Messages.noPermission());
 				else{

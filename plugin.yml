@@ -5,7 +5,7 @@ version: 1.0
 description: An economy plugin that allows players to place requests for items
 depend: [Vault, Essentials]
 commands:
-  mccreload:
+  mccadmin:
     description: reloads the plugin and all configs
     usage: /<command>
   mccrequest:

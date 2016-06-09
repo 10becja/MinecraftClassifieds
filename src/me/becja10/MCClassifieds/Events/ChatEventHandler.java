@@ -181,17 +181,11 @@ public class ChatEventHandler implements Listener {
 	private void selectItemStep(Player player, WizardPlayer wp, String[] input) {
 		ItemStack item = null;
 		try {
-			item = MCClassifieds.itemDb.get(input[0]);
+			item = new ItemStack(MCClassifieds.itemDb.get(input[0]));
 		} catch (Exception e) {
 			invalidResponse(player, wp);
 			return;
-		}
-		
-		if(item == null){
-			invalidResponse(player, wp);
-			return;
-		}
-		
+		}				
 		item.setAmount(1);
 		
 		if(MCClassifieds.blacklistItems.contains(item.getType().toString())){
@@ -207,8 +201,13 @@ public class ChatEventHandler implements Listener {
 			ItemStack temp = new ItemStack(wp.item);
 			try{
 				temp.addEnchantment(en, 1);
-			}catch(IllegalArgumentException ex){
-				continue;
+			}catch(Exception ex){
+				if(ex instanceof IllegalArgumentException)
+					continue;
+				else{ //this is to catch trying to request blocks that are unobtainable such as melon stems
+					player.sendMessage(ChatColor.RED + "This item is not allowed!");
+					return;
+				}
 			}
 			wp.possbileEnchantments.add(en);
 		}
