@@ -105,7 +105,7 @@ public class RequestCommandHandler {
 					player.sendMessage(ChatColor.GREEN + "You have been paid " + ChatColor.GOLD + "$" + req.price);
 					MCClassifieds.logger.info(player.getName() + "was credited with " + req.amount + " for selling " + 
 																	req.amount + " " + req.item + " to " +
-																	Bukkit.getPlayer(req.requestingPlayer).getName());
+																	Bukkit.getOfflinePlayer(req.requestingPlayer).getName());
 					MCClassifieds.fulfillRequest(req);
 				}
 				else{
