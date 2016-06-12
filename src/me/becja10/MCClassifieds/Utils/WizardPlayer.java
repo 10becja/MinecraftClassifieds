@@ -8,6 +8,7 @@ import java.util.UUID;
 import me.becja10.MCClassifieds.MCClassifieds;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -37,17 +38,37 @@ public class WizardPlayer {
 	}
 	
 	public void goToNextStep(){
-		if(wizStep == 1)
-		{
-			if(!item.getEnchantments().isEmpty()){ //if the item has an enchantment, only allow 1
-				amount = 1;
-				wizStep = 4;
-			}
-			else
-				wizStep = 3;
+		switch(wizStep){
+			case 0:
+				if(item != null){
+					if(possbileEnchantments.isEmpty())
+						wizStep = (item.getType() == Material.SPLASH_POTION || item.getType() == Material.POTION) ? 2 : 3;
+					else
+						wizStep = 1;
+				}
+				return;
+			case 1:
+				if(!item.getEnchantments().isEmpty()){ //if the item has an enchantment, only allow 1
+					amount = 1;
+					wizStep = 4;
+				}
+				else
+					wizStep = 3;			
+				return;
+			case 2:
+				return;
+			case 3:
+				if(amount > 0)
+					wizStep = 4;
+				return;
+			case 4:
+				if(price > 0)
+					wizStep = 5;
+				return;
+				
+			default: 
+				return;
 		}
-		
-		return; //only enchantment allows for next ATM
 	}
 	
 	public String getPromptForStep(){
@@ -79,9 +100,9 @@ public class WizardPlayer {
 	
 	private String confirmMessage(){
 		String ret = "";
-		
+		String itemName = MCClassifieds.getItemName(item);
 		ret += ChatColor.GREEN + "You've finished the wizard and have requested:\n";
-		ret += ChatColor.GOLD + "     " + amount + " " +  MCClassifieds.itemDb.name(item) + " for $" + price + "\n";
+		ret += ChatColor.GOLD + "     " + amount + " " +  itemName + " for $" + price + "\n";
 		Map<Enchantment, Integer> map = item.getEnchantments();
 		if(!map.isEmpty()){
 			ret += ChatColor.GREEN + "Enchanted with:\n";

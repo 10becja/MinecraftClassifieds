@@ -91,7 +91,11 @@ public class ChatEventHandler implements Listener {
 						player.sendMessage(ChatColor.RED + "You do not have enough money to create this request. Request cancelled.");
 					}
 					MCClassifieds.wizardPlayers.remove(player.getUniqueId());
-				}				
+				}
+				else{
+					player.sendMessage(ChatColor.GREEN + "Please enter \"Confirm\" to complete your request, or \"Quit\" to cancel.");
+					player.sendMessage(Messages.breakLine());
+				}
 				return;		
 		}		
 	}
@@ -117,7 +121,7 @@ public class ChatEventHandler implements Listener {
 		}
 		
 		wp.price = price;
-		wp.wizStep = 5;
+		wp.goToNextStep();
 		player.sendMessage(wp.getPromptForStep());
 		player.sendMessage(Messages.breakLine());
 		return;
@@ -144,7 +148,7 @@ public class ChatEventHandler implements Listener {
 		}
 		
 		wp.amount = amount;
-		wp.wizStep = 4;
+		wp.goToNextStep();
 		player.sendMessage(wp.getPromptForStep());
 		player.sendMessage(Messages.breakLine());
 		return;
@@ -211,14 +215,8 @@ public class ChatEventHandler implements Listener {
 			}
 			wp.possbileEnchantments.add(en);
 		}
-		if(wp.possbileEnchantments.isEmpty()){
-			if(wp.item.getType() == Material.SPLASH_POTION || wp.item.getType() == Material.POTION)
-				wp.wizStep = 2;
-			else
-				wp.wizStep = 3;
-		}
-		else
-			wp.wizStep = 1;
+		
+		wp.goToNextStep();
 		
 		player.sendMessage(wp.getPromptForStep());
 		player.sendMessage(Messages.breakLine());

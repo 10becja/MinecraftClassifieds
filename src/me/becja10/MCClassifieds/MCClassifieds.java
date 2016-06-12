@@ -89,7 +89,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 	private void saveConfig(FileConfiguration config, String path)
 	{
         try{config.save(path);}
-        catch(IOException exception){logger.info("Unable to write to the configuration file at \"" + path + "\"");}
+        catch(IOException exception){logger.warning("Unable to write to the configuration file at \"" + path + "\"");}
 	}
 	
 	@Override
@@ -107,6 +107,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		defaultBlacklist = new ArrayList<String>();
 		defaultBlacklist.add(Material.BEDROCK.toString());
 		defaultBlacklist.add(Material.SOIL.toString());
+		defaultBlacklist.add(Material.DOUBLE_PLANT.toString());
 		defaultBlacklist.add(Material.AIR.toString());
 		defaultBlacklist.add(Material.BARRIER.toString());
 		defaultBlacklist.add(Material.ENDER_PORTAL_FRAME.toString());
@@ -130,7 +131,7 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		ess = (IEssentials)manager.getPlugin("Essentials");
 		
 		if(!ess.isEnabled()){
-			logger.warning("Could not load Essentials. Disabling plugin.");
+			logger.severe("Could not load Essentials. Disabling plugin.");
 			manager.disablePlugin(this);
 			return;
 		}
@@ -169,14 +170,15 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 	{
 		switch(cmd.getName().toLowerCase()){ 
 			case "mccadmin":
-				if(sender instanceof Player && !sender.hasPermission(""))
+				if(sender instanceof Player && !sender.hasPermission("mcc.admin"))
 					sender.sendMessage(Messages.noPermission());
 				else{
 					loadConfig();
 					sender.sendMessage(Messages.reloadSuccessful());
 				}
 				return true;
-				
+			case "mcc":
+				return displayCommands(sender);
 			case "mccrequest":
 				return RequestCommandHandler.makeRequest(sender);
 			case "mccfulfill":
@@ -370,6 +372,14 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		player.sendMessage(ChatColor.GREEN + "Your items have been placed in your inventory!");
 	}
 	
+	public static String getItemName(ItemStack item){
+		String itemName = MCClassifieds.itemDb.name(item);
+		if(itemName == null)
+			itemName = item.getType().name().toLowerCase(); 
+		
+		return itemName;
+	}
+	
 	private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {
             return false;
@@ -400,6 +410,53 @@ public class MCClassifieds extends JavaPlugin implements Listener{
 		for(Request req : toCancel){
 			cancelRequest(req);				
 		}
+	}
+	
+	private boolean displayCommands(CommandSender sender){
+		String mccadmin = ChatColor.GOLD + "/mccadmin" + ChatColor.WHITE + ": ";
+		String mccrequest = ChatColor.GOLD + "/mccrequest" + ChatColor.WHITE + ": ";
+		String mcclist = ChatColor.GOLD + "/mcclist (page)" + ChatColor.WHITE + ": ";
+		String mccfulfill = ChatColor.GOLD + "/mccfulfill <id>" + ChatColor.WHITE + ": ";
+		String mccget = ChatColor.GOLD + "/mccget <id>" + ChatColor.WHITE + ": ";
+		String mcccancel = ChatColor.GOLD + "/mcccancel <id>" + ChatColor.WHITE + ": ";
+		
+		String msg = "";
+		
+		if(sender.hasPermission("mcc.admin"))
+			sender.sendMessage(mccadmin + "Reloads the config file.");
+		
+		if(sender.hasPermission("mcc.request"))
+			sender.sendMessage(mccrequest + "Initiates a wizard to help create requests.");
+		
+		if(sender.hasPermission("mcc.list"))
+		{
+			msg = mcclist + "Displays a list of all active requests, with an optional page." 
+						  + " You can use " + ChatColor.GOLD + "/mcclist mine (page)" + ChatColor.WHITE
+						  + "To see all of your own requests.";
+			if(sender.hasPermission("mcc.list.other")){
+				msg += " You can also use " + ChatColor.GOLD + "/mcclist playerName " + ChatColor.WHITE
+					+  "to view another players requests.";
+			}
+			sender.sendMessage(msg);
+		}
+		
+		if(sender.hasPermission("mcc.fulfill"))
+			sender.sendMessage(mccfulfill + "Fulfill a request with the given id, found from doing " + ChatColor.GOLD + "/mcclist");
+		
+		if(sender.hasPermission("mcc.get"))
+			sender.sendMessage(mccget + "Get a completed request. Use " + ChatColor.GOLD + "/mcclist mine" + ChatColor.RESET 
+					+ " to get the proper id");
+		
+		if(sender.hasPermission("mcc.cancel")){
+			msg = mcccancel + "Cancels a request. Use " + ChatColor.GOLD + "/mcclist mine " + ChatColor.RESET + "to get the proper id.";
+			if(sender.hasPermission("mcc.cancel.other")){
+				msg += " You can also use " + ChatColor.GOLD + "/mcccancel (playername) <id>" + ChatColor.RESET 
+						+ " to cancel another players request";
+			}
+			sender.sendMessage(msg);
+		}		
+		
+		return true;
 	}
 }
 

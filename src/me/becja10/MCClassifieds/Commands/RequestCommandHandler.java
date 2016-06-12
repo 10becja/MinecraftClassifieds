@@ -103,7 +103,7 @@ public class RequestCommandHandler {
 					player.getInventory().removeItem(toRemove);
 					player.updateInventory();
 					player.sendMessage(ChatColor.GREEN + "You have been paid " + ChatColor.GOLD + "$" + req.price);
-					MCClassifieds.logger.info(player.getName() + "was credited with " + req.amount + " for selling " + 
+					MCClassifieds.logger.info(player.getName() + " was credited with " + req.amount + " for selling " + 
 																	req.amount + " " + req.item + " to " +
 																	Bukkit.getOfflinePlayer(req.requestingPlayer).getName());
 					MCClassifieds.fulfillRequest(req);
@@ -197,7 +197,15 @@ public class RequestCommandHandler {
 		}
 		
 		if(args.length < 1)
+		{
+			if(!sender.hasPermission("mcc.cancel.other"))
+			{
+				sender.sendMessage(ChatColor.RED + "Usage is " + ChatColor.WHITE + "/mcccancel <id>" + ChatColor.RED);
+				sender.sendMessage(ChatColor.RED + "Use " + ChatColor.WHITE + "/mcclist mine" + ChatColor.RED + " for the correct ID");
+				return true;
+			}
 			return false;
+		}
 		
 		int idParam = 0;
 		boolean nameSent = false;
@@ -225,11 +233,25 @@ public class RequestCommandHandler {
 				id = Integer.parseInt(args[idParam]) - 1;
 			}
 		}catch(NumberFormatException e){
+			if(!sender.hasPermission("mcc.cancel.other"))
+			{
+				sender.sendMessage(ChatColor.RED + "Usage is " + ChatColor.WHITE + "/mcccancel <id>" + ChatColor.RED);
+				sender.sendMessage(ChatColor.RED + "Use " + ChatColor.WHITE + "/mcclist mine" + ChatColor.RED + " for the correct ID");
+				return true;
+			}
 			return false;
 		}
 		
 		if(id < 0)
+		{
+			if(!sender.hasPermission("mcc.cancel.other"))
+			{
+				sender.sendMessage(ChatColor.RED + "Usage is " + ChatColor.WHITE + "/mcccancel <id>" + ChatColor.RED);
+				sender.sendMessage(ChatColor.RED + "Use " + ChatColor.WHITE + "/mcclist mine" + ChatColor.RED + " for the correct ID");
+				return true;
+			}
 			return false;
+		}
 		
 		UUID pid = null;
 		
@@ -265,7 +287,11 @@ public class RequestCommandHandler {
 		}
 		
 		if(args.length != 1)
-			return false;
+		{
+			sender.sendMessage(ChatColor.RED + "Usage is " + ChatColor.WHITE + "/mccget <id>" + ChatColor.RED);
+			sender.sendMessage(ChatColor.RED + "Use " + ChatColor.WHITE + "/mcclist mine" + ChatColor.RED + " for the correct ID");
+			return true;
+		}
 		
 		int id = 0;
 		
@@ -312,9 +338,7 @@ public class RequestCommandHandler {
 	}
 	
 	private static String getItemDisplayName(ItemStack item){
-		String display = MCClassifieds.itemDb.name(item);
-		if(display == null)
-			display = item.getType().name().toLowerCase();
+		String display = MCClassifieds.getItemName(item);
 		Map<Enchantment, Integer> map = item.getEnchantments();
 		if(!map.isEmpty()){
 			String prefix = "";

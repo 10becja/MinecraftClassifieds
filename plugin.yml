@@ -5,6 +5,9 @@ version: 1.0
 description: An economy plugin that allows players to place requests for items
 depend: [Vault, Essentials]
 commands:
+  mcc:
+    description: displays commands for this plugin
+    usage: /<command>
   mccadmin:
     description: reloads the plugin and all configs
     usage: /<command>
@@ -13,13 +16,13 @@ commands:
     usage: /<command>
   mcclist:
     description: Shows all active requests. If 'mine' or another player's name is provided, shows all requests related to them.
-    usage: /<command> (mine|player) [page number]
+    usage: /<command> (mine|player name) [page number]
   mccfulfill:
-    description: Completes a request. Must hold at least one of the request items in your hand.
+    description: Completes a request.
     usage: /<command> <id>
   mccget:
     description: Once a request is fulfilled, this will give you the items. Use /mcclist mine to get the right id.
     usage: /<command> <id>
   mcccancel:
-    description: Cancels a request
-    usage: /<command> (player) <id>
+    description: Cancels a request. To cancel your own request, omit player name
+    usage: /<command> (player name) <id>
